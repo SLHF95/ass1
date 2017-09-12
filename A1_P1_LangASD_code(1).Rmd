@@ -210,7 +210,11 @@ List all kids who:
 3. have not completed all trials. Tip: Use pipes to solve this
 
 ```{r}
-filter(dfAll, CHI_MLU > 2.7)
+filter(dfAll, CHI_MLU > 2.7) ??
+MLUacross = by(dfAll$CHI_MLU, dfAll$SUBJ1, FUN = mean)
+MLUacross[MLUacross > 2.7]
+
+filter(dfAll, CHI_MLU < 1.5 & VISIT == 1)
 
 
 ```
@@ -222,7 +226,7 @@ USING ARRANGE
 2. Sort kids to find the kid who produced the least amount of words on the 1st visit.
 
 ```{r}
-
+arrange(dfAll, CHI_MLU, VISIT == 6)
 
 ```
 
