@@ -38,7 +38,7 @@ N.B. Create a GitHub repository for the Language Development in ASD set of assig
 Set the working directory (the directory with your data and code for these assignments):
 
 ```{r}
-
+setwd("C:/Users/Bruger/Dropbox/0Aarhus Universitet/Experimental Methods III/Assignment 1/ass1")
 ```
 
 Load the three data sets, after downloading them from dropbox and saving them in your working directory:
@@ -47,7 +47,9 @@ Load the three data sets, after downloading them from dropbox and saving them in
 * Word data: https://www.dropbox.com/s/8ng1civpl2aux58/token_train.csv?dl=0
 
 ```{r}
-
+data1 = read.csv("demo_train(1).csv")
+data2 = read.csv("LU_train.csv")
+data3 = read.csv("token_train.csv")
 ```
 
 Explore the 3 datasets (e.g. visualize them, summarize them, etc.). You will see that the data is messy, since the psychologists collected the demographic data, a linguist analyzed the length of utterance in May 2014 and the same linguist analyzed the words several months later. In particular:
@@ -64,13 +66,22 @@ Tip: Look into the package data.table, or google "how to rename variables in R"
 
 
 ```{r}
-
+library(plyr)
+data1 = rename(data1, c("Child.ID" = "SUBJ", "Visit" = "VISIT"))
 ```
 
 2b. Find a way to homogeneize the way "visit" is reported. If you look into the original data sets, you will see that in the LU data and the Token data, Visits are called "visit 1" in stead of just 1 (which is the case in the demographic data set).
 Tip: There is a package called stringr, which will be very handy for you also in future assignments. We will return to this package later, but for now use the str_extract () to extract only the number from the variable Visit in each data set. Tip: type ?str_extract() after loading the library, for examples of how to use it.
+______
+"\\d" means regular expression + digits
+str_extract(where you want to extract, what you want to extract)
 
 ```{r}
+
+library(stringr)
+data2$VISIT = str_extract(data2$VISIT, "\\d")
+data3$VISIT = str_extract(data3$VISIT, "\\d")
+
 
 
 ```
@@ -83,11 +94,14 @@ Tip: Take a look into the gsub() function.
 Tip: A possible solution has one line of code for each child name that is to be changed. Another combines mutate() and recode()
 
 Tip: You will have to do identical work for both data sets, so to save time on the copy/paste use the cmd+f/ctrl+f function. Add the data frame name (e.g. LU_data) in the first box, and the data frame name (e.g. Tokens_data) you wish to change it to in the other box, and press replace. 
-
+______
+gsub(what you want to replace, what you want to replace it with, where)
 
 
 ```{r}
-
+data1$SUBJ1 = gsub("\\.", "", data1$SUBJ)
+data2$SUBJ1 = gsub("\\.", "", data2$SUBJ)
+data3$SUBJ1 = gsub("\\.", "", data3$SUBJ)
 ```
 
 2d. Now that the nitty gritty details of the different data sets are fixed, we want to make a subset of each data set only containig the variables that we wish to use in the final data set.
@@ -105,7 +119,13 @@ The variables we need are: Child.ID, Visit, Ethnicity, Diagnosis, Gender, Age, A
 It would be smart to rename the MullenRaw and ExpressiveLangRaw into something you can remember (i.e. nonVerbalIQ, verbalIQ)
 
 ```{r}
+library(tidyverse)
 
+d1 = select(data1, SUBJ1, VISIT, Ethnicity, Diagnosis, Gender, Age, ADOS, MullenRaw, ExpressiveLangRaw)
+d2 = select(data2, SUBJ1, VISIT, MOT_MLU, MOT_LUstd, CHI_MLU, CHI_LUstd)
+d3 = select(data3, SUBJ1, VISIT, types_MOT, types_CHI, tokens_MOT, tokens_CHI)
+
+#???d1 = rename(d1, c("MullenRaw" = "nonVerbalIQ", "ExpressiveLangRaw" = "verbalIQ"))
 
 ```
 
@@ -116,7 +136,8 @@ Tip: Merge only works for two data frames at the time.
 Tip: Check the number of observations in the datasets before and after merging. What is going on?
 
 ```{r}
-
+d1and2 = merge(d1, d2, by = c("SUBJ1", "VISIT"))
+dfAll = merge(d1and2, d3, by = c("SUBJ1", "VISIT"))
 ```
 
 Are we done yet?
@@ -130,6 +151,13 @@ Tip: the final dataset should have as many rows as the the old one.
 
 
 ```{r}
+dfV1 = subset(dfAll, dfAll$VISIT == 1) 
+dfV1 = select(dfV1, SUBJ1, ADOS, MullenRaw, ExpressiveLangRaw)
+
+dfV1 = plyr::rename(dfV1, c("ADOS" = "ADOS1", "MullenRaw" = "nonVerbalIQ", "ExpressiveLangRaw" = "verbalIQ"))
+
+dfAll = merge(dfAll, dfV1, by ="SUBJ1")
+dfAll = subset(dfAll, select = -c(ADOS, MullenRaw, ExpressiveLangRaw))
 
 ```
 
@@ -138,13 +166,27 @@ Now, we are almost ready to actually start working with the data. However, here 
 * in some experiments your participants must be anonymous. Therefore we wish to turn the CHILD.ID into numbers. 
 Tip: as.numeric() might be a useful function, but not alone.
 
+```{r}
+dfAll$SUBJ1 = as.numeric(as.factor(dfAll$SUBJ1))
+```
+
+
 * Note that visit is (probably) not defined as numeric. Turn it into a numeric variable
+
+```{r}
+dfAll$VISIT = as.numeric(dfAll$VISIT)
+```
+
 
 * In order to make it easier to work with this nice, clean dataset in the future, it is practical to make sure the variables have sensible values. E.g. right now gender is marked 1 and 2, but in two weeks you will not be able to remember, which gender were connected to which number, so change the values from 1 and 2 to F and M in the gender variable. For the same reason, you should also change the values of Diagnosis from A and B to ASD (autism spectrum disorder) and TD (typically developing). 
 Tip: Google "how to rename levels in R".
 
 ```{r}
 
+dfAll$Gender = as.factor(dfAll$Gender)
+dfAll$Gender = revalue(dfAll$Gender, c("1" = "F", "2" = "M"))
+
+dfAll$Diagnosis = revalue(dfAll$Diagnosis, c("A" = "ASD", "B" = "TD"))
 
 ```
 
@@ -152,7 +194,7 @@ Tip: Google "how to rename levels in R".
 Save the data set using into a csv file. Hint: look into write.csv()
 
 ```{r}
-
+write.csv(dfAll, file = "ass1_LangASD.csv")
 ```
 
 
@@ -168,6 +210,7 @@ List all kids who:
 3. have not completed all trials. Tip: Use pipes to solve this
 
 ```{r}
+filter(dfAll, CHI_MLU > 2.7)
 
 
 ```
