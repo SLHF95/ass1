@@ -1,6 +1,6 @@
 ---
 title: "A1_P1_Student"
-author: "Céline Carlsen"
+author: "Sofie L. H. Frandsen"
 date: "29/8/2017"
 output: html_document
 ---
@@ -71,10 +71,10 @@ data1 = rename(data1, c("Child.ID" = "SUBJ", "Visit" = "VISIT"))
 ```
 
 2b. Find a way to homogeneize the way "visit" is reported. If you look into the original data sets, you will see that in the LU data and the Token data, Visits are called "visit 1" in stead of just 1 (which is the case in the demographic data set).
-Tip: There is a package called stringr, which will be very handy for you also in future assignments. We will return to this package later, but for now use the str_extract () to extract only the number from the variable Visit in each data set. Tip: type ?str_extract() after loading the library, for examples of how to use it.
-______
-"\\d" means regular expression + digits
-str_extract(where you want to extract, what you want to extract)
+Tip: There is a package called stringr, which will be very handy for you also in future assignments. We will return to this package later, but for now use the str_extract () to extract only the number from the variable Visit in each data set. Tip: type ?str_extract() after loading the library, for examples of how to use it.  
+
+*"\\d" means regular expression + digits*
+*str_extract(where you want to extract, what you want to extract)* 
 
 ```{r}
 
@@ -94,8 +94,8 @@ Tip: Take a look into the gsub() function.
 Tip: A possible solution has one line of code for each child name that is to be changed. Another combines mutate() and recode()
 
 Tip: You will have to do identical work for both data sets, so to save time on the copy/paste use the cmd+f/ctrl+f function. Add the data frame name (e.g. LU_data) in the first box, and the data frame name (e.g. Tokens_data) you wish to change it to in the other box, and press replace. 
-______
-gsub(what you want to replace, what you want to replace it with, where)
+
+*gsub(what you want to replace, what you want to replace it with, where)*
 
 
 ```{r}
@@ -125,8 +125,6 @@ d1 = select(data1, SUBJ1, VISIT, Ethnicity, Diagnosis, Gender, Age, ADOS, Mullen
 d2 = select(data2, SUBJ1, VISIT, MOT_MLU, MOT_LUstd, CHI_MLU, CHI_LUstd)
 d3 = select(data3, SUBJ1, VISIT, types_MOT, types_CHI, tokens_MOT, tokens_CHI)
 
-#???d1 = rename(d1, c("MullenRaw" = "nonVerbalIQ", "ExpressiveLangRaw" = "verbalIQ"))
-
 ```
 
 2e. Finally we are ready to merge all the data sets into just one. 
@@ -139,7 +137,10 @@ Tip: Check the number of observations in the datasets before and after merging. 
 d1and2 = merge(d1, d2, by = c("SUBJ1", "VISIT"))
 dfAll = merge(d1and2, d3, by = c("SUBJ1", "VISIT"))
 ```
+The number of observations changes - df1 used to be 372 observations, but the new dataframe is only 352 observations. 
 
+ *** 
+ 
 Are we done yet?
 
 If you look at the data set now, you'll se a lot of NA's in the variables ADOS, nonVerbalIQ (MullenRaw) and verbalIQ (ExpressiveLangRaw). These measures were not taken at all visits. Additionally, we only want these measures for the first visit (Riccardo will explain why in class).
@@ -206,46 +207,89 @@ http://r4ds.had.co.nz/index.html
 1) USING FILTER
 List all kids who:
 1. have a mean length of utterance (across all visits) of more than 2.7 morphemes.
-2. have a mean length of utterance of less than 1.5 morphemes at the first visit
-3. have not completed all trials. Tip: Use pipes to solve this
-
 ```{r}
-filter(dfAll, CHI_MLU > 2.7) ??
-MLUacross = by(dfAll$CHI_MLU, dfAll$SUBJ1, FUN = mean)
-MLUacross[MLUacross > 2.7]
 
+dfAll %>% group_by(SUBJ1) %>%
+  summarise(mlu = mean(CHI_MLU, na.rm = TRUE)) %>%
+  filter(mlu > 2.7)
+
+```
+
+2. have a mean length of utterance of less than 1.5 morphemes at the first visit
+```{r}
 filter(dfAll, CHI_MLU < 1.5 & VISIT == 1)
+```
 
-
+3. have not completed all trials. Tip: Use pipes to solve this
+```{r}
+which(is.na(dfAll)==T)
+#??
 ```
 
 
 USING ARRANGE
 
 1. Sort kids to find the kid who produced the most words on the 6th visit
-2. Sort kids to find the kid who produced the least amount of words on the 1st visit.
 
 ```{r}
-arrange(dfAll, CHI_MLU, VISIT == 6)
+arrange(dfAll, desc(CHI_MLU)) %>%
+  filter(VISIT == 6)
 
 ```
+
+2. Sort kids to find the kid who produced the least amount of words on the 1st visit.
+```{r}
+arrange(dfAll, CHI_MLU) %>%
+  filter(VISIT == 1)
+
+```
+
+
 
 USING SELECT
 
 1. Make a subset of the data including only kids with ASD, mlu and word tokens
-2. What happens if you include the name of a variable multiple times in a select() call?
-
 ```{r}
-
+select(dfAll, SUBJ1, Diagnosis, CHI_MLU, tokens_CHI) %>%
+  filter(Diagnosis == "ASD")
 ```
 
+2. What happens if you include the name of a variable multiple times in a select() call?
+```{r}
+select(dfAll, SUBJ1, Diagnosis, CHI_MLU, CHI_MLU, tokens_CHI) %>%
+  filter(Diagnosis == "ASD")
+```
+No difference?  
 
 USING MUTATE, SUMMARISE and PIPES
 1. Add a column to the data set that represents the mean number of words spoken during all visits.
-2. Use the summarise function and pipes to add an column in the data set containing the mean amount of words produced by each trial across all visits. HINT: group by Child.ID 
-3. The solution to task above enables us to assess the average amount of words produced by each child. Why don't we just use these average values to describe the language production of the children? What is the advantage of keeping all the data?
-
 ```{r}
 
+# mutate(mean_words = dfAll %>% 
+#          group_by(VISIT) %>% 
+#          summarise(mlu = mean(tokens_CHI, na.rm = TRUE)))
+# 
+# mutate(dfAll, mean_words_per_visit)
+# 
+# mean_words_per_visit = summarise(group_by(dfAll, VISIT), mean(tokens_CHI, na.rm = TRUE))
+# 
+# dfAll %>% group_by(VISIT) %>%
+#   summarise(mlu = mean(tokens_CHI, na.rm = TRUE))
+# 
+# mutate(dfAll, mean_words_per_visit = summarise(mean(tokens_CHI), group_by(VISIT)))
+
+#i don't get this function :(
 
 ```
+
+2. Use the summarise function and pipes to add a column in the data set containing the mean amount of words produced by each trial across all visits. HINT: group by Child.ID 
+```{r}
+
+#same issue 
+
+```
+
+
+3. The solution to task above enables us to assess the average amount of words produced by each child. Why don't we just use these average values to describe the language production of the children? What is the advantage of keeping all the data?
+
+  The advantage of keeping all of the data is that we get a look on how the children develop over time. We are not just interested in the mean, as it does not tell us enough in detail.
