@@ -37,16 +37,39 @@ N.B. The following lines are a summary of the questions to be answered, the step
 Describe the participant samples in the dataset (e.g. by diagnosis, age, etc.). Do you think the two groups are well balanced? If not, what do you think was the reason?
 
 [HERE GOES YOUR ANSWER]
+In order to investigate the balance between the two groups, we performed t-tests in the form of linear models. We found significant differences between the two groups in age, ADOS, and the mother's MLU. However, TD children are on average 12 months younger than the ASD children, and the mothers of TD children speak a little more to their children than mothers of ASD children.
+
+The reason for the age difference in the two groups might be that ASD children develop in different ways (both from each other, but also from TD children) - some early, some later, and therefore it wouldn't make sense to use the same age groups for the two groups.
+
+I don't know why TD mothers talk more to their children than ASD mothers, as there is no significant difference between how much the children talk in each group.
+
+ADOS is the severity of ASD symptoms, so it makes sense that the groups are significantly different from each other, as the ASD children should have a higher ADOS score than TD children.
+
+On all other measures, the two groups are well balanced. 
+
 
 ### Exercise 2) Children learning language: the effects of time and ASD
 Describe linguistic development in TD and ASD children in terms of Mean Length of Utterance (MLU)?
 
 [HERE GOES YOUR ANSWER]
+The main effect Visit had a significant effect on the mean length of utterance produced by a child: (b = 0.10, SE = 0.03, t-value = 3.69, p < 0.001). Whether the child was diagnosed with ASD or not did not have a significant effect. 
+
+There was a significant interaction effect of the visit and the diagnosis of the child, meaning that there is a significant difference in MLU for each visit depending on the diagnosis of the child. Not being diagnosed with ASD had a significant effect on MLU pr. visit: (b = 0.25, SE = 0.04, t-value = 6.72, p < 0.001).
+
+In other words, typically developing children seem to produce longer utterances during visits than children with ASD.
+
+#Is this a correct interpretation? Especially with the interaction?
+
 
 ### Exercise 3) Child directed speech as a moving target
 Describe how parental use of language changes over time in terms of MLU. What do you think is going on?
 
 [HERE GOES YOUR ANSWER]
+The main effect Visit had a significant effect on the mean length of utterance produced by the parent: (b = 0.10, SE = 0.03, t-value = 3.74, p < 0.001). The main effect diagnosis also had a significant effect: (b = 0.36, SE = 0.18, t-value = 2,02, p < 0.05). In other words, the main effects suggest that mothers speak more to their children over time, and that mothers of TD children speak more to their children than mothers of children with ASD.
+
+There was no significant interaction effect of the visit and the diagnosis of the child, meaning that there is a no significant difference in MLU for each visit depending on the diagnosis of the child. The child not being diagnosed with ASD had no significant effect on parent MLU pr. visit: (b = 0.04, SE = 0.04, t-value = 1.10, p = 0.278)
+
+I don't know what is going on.
 
 ### Exercise 4) Looking into "individual differences" (demographic, clinical or cognitive profiles)
 The dataset contains some additional variables characterizing the kids’ cognitive and clinical profile: ADOS (autism severity), MSEL EL (Expressive Language, that is, verbal IQ, or linguistic skills at first visit as assessed by a psychologist using Mullen Scales of Early Learning), MSEL VR (Visual Reception, used as a proxy for non verbal IQ at first visit), Age, Gender, Ethnicity. Would it make sense to add any of them to your model of linguistic trajectories? Create the best possible model (the one that best explain the data, with MLU as outcome). Next time your model will be tested on new participants, and we will proclaim a winner. Describe your strategy to select the best models (how did you choose the variables to include?) and send the code to Riccardo and Celine.
@@ -79,7 +102,7 @@ Load necessary libraries : what will you need?
 
 ```{r Load Libraries}
 library(pacman)
-p_load(lmerTest, ggplot2)
+p_load(lmerTest, ggplot2, MuMIn)
 ```
 
 ### Define your working directory and load the data
@@ -156,6 +179,9 @@ summary(ethn)
 #insignificant = groups are well matched
 
 
+length(data[data$Diagnosis == "ASD", 1])
+length(data[data$Diagnosis == "TD", 1])
+#there are more TD children than ASD children
 
 ```
 
@@ -180,31 +206,44 @@ ggplot(data, aes(data$Age, data$CHI_MLU, colour = Diagnosis)) + geom_point() + g
 ggplot(data, aes(data$VISIT, data$CHI_MLU, colour = Diagnosis)) + geom_point() + geom_smooth(method = "lm") + labs(x = "Visit number", y = "Child MLU", title = "Child MLU over time")
 
 
-politeness.model = lmer(frequency ~ attitude + gender + (1|subject) + (1|scenario), data = politeness)
-summary(politeness.model)
+mCHI_MLU = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = data)
+summary(mCHI_MLU)
 
-model = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = data)
-summary(model)
-
-model2 = lmer(CHI_MLU ~ 1 + VISIT * Diagnosis + (1+VISIT|SUBJ1), data = data)
-summary(model2)
+mCHI_MLUin = lmer(CHI_MLU ~ 1 + VISIT * Diagnosis + (1+VISIT|SUBJ1), data = data)
+summary(mCHI_MLUin)
 
 ```
 
 How would you evaluate whether the model is a good model?
-There are many ways to asses how good a model is. 
-Comparing model with null model - significant improvement?
-How much variance is explained by the models? Take the one that explains the most
-Looking at assumptions - explain both central and extreme data?
-Conceptual - do we need these elements in our model?
+*There are many ways to assess how good a model is.* 
 
+Comparing model with null model:
 ```{r}
+nullCHI_MLU = lmer(CHI_MLU ~ 1 + (1+VISIT|SUBJ1), data = data)
+
+anova(nullCHI_MLU, mCHI_MLU)
+anova(nullCHI_MLU, mCHI_MLUin)
 
 ```
 
-Not too good, right? Let's check whether a growth curve model is better.
-Remember: a growth curve model assesses whether changes in time can be described by linear, or quadratic, or cubic (or... etc.) components.
-First build the different models, then compare them to see which one is better
+There is a less than 0.1% chance of finding a disrepancy between the observed and expected distributions that is at least 57.85. ??
+
+
+How much variance is explained by the models? *Look at marginal R squared. Take the one that explains the most.*
+```{r}
+r.squaredGLMM(mCHI_MLU)
+r.squaredGLMM(mCHI_MLUin)
+
+```
+
+*Can also*
+*Look at assumptions - explain both central and extreme data?*
+*Conceptual - do we need these elements in our model?*
+
+
+#Not too good, right? Let's check whether a growth curve model is better.
+#Remember: a growth curve model assesses whether changes in time can be described by linear, or quadratic, or cubic (or... etc.) components.
+#First build the different models, then compare them to see which one is better
 
 ```{r}
 
@@ -224,18 +263,61 @@ Linguistic development of children MLU is affected by ... [COMPLETE]
 ### Hypothesis: Parental MLU changes: i) over time, ii) according to diagnosis
 
 ```{r}
+boxplot(MOT_MLU ~ Diagnosis*VISIT, col = c("white", "lightgrey"), data)
 
+ggplot(data, aes(data$Age, data$MOT_MLU, colour = Diagnosis)) + geom_point() + geom_smooth(method = "lm") + labs(x = "Age (months)", y = "Mother MLU", title = "Mother MLU over time") 
+
+ggplot(data, aes(data$VISIT, data$MOT_MLU, colour = Diagnosis)) + geom_point() + geom_smooth(method = "lm") + labs(x = "Visit number", y = "Mother MLU", title = "Mother MLU over time")
+
+
+mMOT_MLU = lmer(MOT_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = data)
+summary(mMOT_MLU)
+
+mMOT_MLUin = lmer(MOT_MLU ~ 1 + VISIT * Diagnosis + (1+VISIT|SUBJ1), data = data)
+summary(mMOT_MLUin)
 ```
 
-[REPORT THE RESULTS]
+
 
 ### Adding new variables (Exercise 4)
 
 Your task now is to figure out how to best describe the children linguistic trajectory. The dataset contains a bunch of additional demographic, cognitive and clinical variables (e.g.verbal and non-verbal IQ). Try them out and identify the statistical models that best describes your data (that is, the children's MLU). Describe how you selected the best model and send the code to run the model to Riccardo and Celine.
 
+The dataset contains some additional variables characterizing the kids’ cognitive and clinical profile: 
+ADOS (autism severity), 
+
+MSEL EL (Expressive Language, that is, verbal IQ, or linguistic skills at first visit as assessed by a psychologist using Mullen Scales of Early Learning), 
+
+MSEL VR (Visual Reception, used as a proxy for non verbal IQ at first visit), 
+
+Age, 
+
+Gender, 
+
+Ethnicity. 
+
+Would it make sense to add any of them to your model of linguistic trajectories? Create the best possible model
+
 
 ```{r}
 
+mCHI_MLU = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = data)
+
+m1 = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + verbalIQ + (1+VISIT|SUBJ1), data = data)
+summary(m1)
+r.squaredGLMM(m1)
+
+m2 = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + verbalIQ + ADOS1 +  (1+VISIT|SUBJ1), data = data)
+summary(m2)
+r.squaredGLMM(m2)
+
+m3 = lmer(CHI_MLU ~ 1 + VISIT + verbalIQ + ADOS1 + (1+VISIT|SUBJ1), data = data)
+summary(m3)
+r.squaredGLMM(m3)
+
+m4 = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|SUBJ1), data = data)
+summary(m4)
+r.squaredGLMM(m4)
 ```
 
 REPORT OF THE RESULTS
