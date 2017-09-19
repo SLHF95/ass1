@@ -58,7 +58,7 @@ There was a significant interaction effect of the visit and the diagnosis of the
 
 In other words, typically developing children seem to produce longer utterances during visits than children with ASD.
 
-#Is this a correct interpretation? Especially with the interaction?
+*Is this a correct interpretation? Especially with the interaction?*
 
 
 ### Exercise 3) Child directed speech as a moving target
@@ -69,12 +69,15 @@ The main effect Visit had a significant effect on the mean length of utterance p
 
 There was no significant interaction effect of the visit and the diagnosis of the child, meaning that there is a no significant difference in MLU for each visit depending on the diagnosis of the child. The child not being diagnosed with ASD had no significant effect on parent MLU pr. visit: (b = 0.04, SE = 0.04, t-value = 1.10, p = 0.278)
 
-I don't know what is going on.
+I don't know what is going on :(
 
 ### Exercise 4) Looking into "individual differences" (demographic, clinical or cognitive profiles)
 The dataset contains some additional variables characterizing the kids’ cognitive and clinical profile: ADOS (autism severity), MSEL EL (Expressive Language, that is, verbal IQ, or linguistic skills at first visit as assessed by a psychologist using Mullen Scales of Early Learning), MSEL VR (Visual Reception, used as a proxy for non verbal IQ at first visit), Age, Gender, Ethnicity. Would it make sense to add any of them to your model of linguistic trajectories? Create the best possible model (the one that best explain the data, with MLU as outcome). Next time your model will be tested on new participants, and we will proclaim a winner. Describe your strategy to select the best models (how did you choose the variables to include?) and send the code to Riccardo and Celine.
 
 [HERE GOES YOUR ANSWER]
+My strategy was basically trial and error - trying different variables to see what would give me significant p-values, a higher R squared, but without too many variables (the simpler the better, right?).
+
+My best model is model 4 with visit, diagnosis, types_CHI, and tokens_CHI as predictors. It has an R squared of 0.74.
 
 ### [OPTIONAL] Exercise 5) Comment on how the three linguistic variables measure linguistic performance (the so-called "construct validity" of the measures). Do they express the same variance?
 
@@ -226,7 +229,9 @@ anova(nullCHI_MLU, mCHI_MLUin)
 
 ```
 
-There is a less than 0.1% chance of finding a disrepancy between the observed and expected distributions that is at least 57.85. ??
+In the interaction model, there is a less than 0.1% chance of finding a disrepancy between the observed and expected distributions that is at least 57.85.??
+
+*How do I interpret the Chi squared? I found the above online but it still doesn't make sense to me.*
 
 
 How much variance is explained by the models? *Look at marginal R squared. Take the one that explains the most.*
@@ -235,6 +240,8 @@ r.squaredGLMM(mCHI_MLU)
 r.squaredGLMM(mCHI_MLUin)
 
 ```
+
+The interaction model explains the most variance (35%).
 
 *Can also*
 *Look at assumptions - explain both central and extreme data?*
