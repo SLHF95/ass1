@@ -21,16 +21,126 @@ N.B. There are several datasets for this exercise, so pay attention to which one
 * Utterance Length data: https://www.dropbox.com/s/uxtqqzl18nwxowq/LU_test.csv?dl=0
 * Word data: https://www.dropbox.com/s/1ces4hv8kh0stov/token_test.csv?dl=0
 
+```{r Load Libraries}
+library(pacman)
+p_load(lmerTest, modelr, stringr, tidyverse, caret, cvTools, Metrics)
+```
+
+### Define your working directory and load the data
+
+- Create a new variable called locpath (localpath)
+- Set it to be equal to your working directory
+- Move to that directory (setwd(locpath))
+- Load the data you saved last time (use read_csv(fileName))
+
+```{r Load Data}
+
+getwd()
+locpath=getwd()
+setwd(locpath)
+data = read.csv("ass1_LangASD.csv")
+
+```
+
 ### Exercise 1) Testing model performance
 
 How did your models from last time perform? In this exercise you have to compare the results on the training data () and on the test data. Report both of them. Compare them. Discuss why they are different.
 
 - recreate the models you chose last time (just write the code again and apply it to Assignment2TrainData1.csv)
-- calculate performance of the model on the training data: root mean square error is a good measure. (Tip: google the functions rmse() and predict() )
-- create the test dataset (apply the code from assignment 1 part 1 to clean up the 3 test datasets)
-- test the performance of the models on the test data (Tips: time to reuse "predict()")
-- optional: predictions are never certain, can you identify the uncertainty of the predictions? (e.g. google predictinterval())
+```{r}
+model = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|SUBJ1), data = data)
+```
 
+- calculate performance of the model on the training data: root mean square error is a good measure. (Tip: google the functions rmse() and predict() )
+    *RMSE(model, data) dont use predict*
+```{r}
+Metrics::rmse(model, data)
+```
+
+- create the test dataset (apply the code from assignment 1 part 1 to clean up the 3 test datasets)
+load the data:
+```{r}
+data1 = read.csv("demo_test.csv")
+data2 = read.csv("LU_test.csv")
+data3 = read.csv("token_test.csv")
+```
+
+rename variables:
+```{r}
+data1 = plyr::rename(data1, c("Child.ID" = "SUBJ", "Visit" = "VISIT"))
+```
+
+make the same:
+```{r}
+data2$VISIT = str_extract(data2$VISIT, "\\d")
+data3$VISIT = str_extract(data3$VISIT, "\\d")
+```
+
+```{r}
+data1$SUBJ1 = gsub("\\.", "", data1$SUBJ)
+data2$SUBJ1 = gsub("\\.", "", data2$SUBJ)
+data3$SUBJ1 = gsub("\\.", "", data3$SUBJ)
+```
+
+select variables:
+```{r}
+d1 = select(data1, SUBJ1, VISIT, Ethnicity, Diagnosis, Gender, Age, ADOS, MullenRaw, ExpressiveLangRaw)
+d2 = select(data2, SUBJ1, VISIT, MOT_MLU, MOT_LUstd, CHI_MLU, CHI_LUstd)
+d3 = select(data3, SUBJ1, VISIT, types_MOT, types_CHI, tokens_MOT, tokens_CHI)
+
+```
+
+merge datasets:
+```{r}
+d1and2 = merge(d1, d2, by = c("SUBJ1", "VISIT"))
+df6 = merge(d1and2, d3, by = c("SUBJ1", "VISIT"))
+```
+
+```{r}
+dfV1 = subset(df6, df6$VISIT == 1) 
+dfV1 = select(dfV1, SUBJ1, ADOS, MullenRaw, ExpressiveLangRaw)
+
+dfV1 = plyr::rename(dfV1, c("ADOS" = "ADOS1", "MullenRaw" = "nonVerbalIQ", "ExpressiveLangRaw" = "verbalIQ"))
+
+df6 = merge(df6, dfV1, by ="SUBJ1")
+df6 = subset(df6, select = -c(ADOS, MullenRaw, ExpressiveLangRaw))
+
+```
+
+```{r}
+str(df6)
+df6$SUBJ1 = as.factor(df6$SUBJ1)
+levels(df6$SUBJ1) = 1:length(levels(df6$SUBJ1))
+```
+
+```{r}
+df6$VISIT = as.numeric(df6$VISIT)
+```
+
+```{r}
+
+df6$Gender = as.factor(df6$Gender)
+df6$Gender = plyr::revalue(df6$Gender, c("1" = "M"))
+
+df6$Diagnosis = plyr::revalue(df6$Diagnosis, c("A" = "ASD", "B" = "TD"))
+
+```
+
+save the data as a csv-file (probably not necessary):
+```{r}
+write.csv(df6, file = "ass1_LangASDtest.csv")
+```
+
+- test the performance of the models on the test data 
+```{r}
+testmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|SUBJ1), data = df6)
+```
+
+```{r}
+rmse(testmodel, df6)
+```
+
+- optional: predictions are never certain, can you identify the uncertainty of the predictions? (e.g. google predictinterval())
 
 [HERE GOES YOUR ANSWER]
 
@@ -41,8 +151,40 @@ One way to reduce bad surprises when testing a model on new data is to train the
 In this exercise you have to use cross-validation to calculate the predictive error of your models and use this predictive error to select the best possible model.
 
 - Create the basic model of ChildMLU as a function of Time and Diagnosis (don't forget the random effects!).
+
+```{r}
+basicmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = data)
+```
+
 - Make a cross-validated version of the model. (Tips: google the function "createFolds";  loop through each fold, train a model on the other folds and test it on the fold)
+
+```{r}
+folds = createFolds(unique(data$SUBJ1), k = 5)
+rmse_train = NULL
+rmse_test = NULL
+n = 1
+
+for(i in folds){
+  train = subset(data, !(data$SUBJ1 %in% i))
+  test = subset(data, data$SUBJ1 %in%i)
+
+  newmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = train)
+  
+  newpred = predict(newmodel, newdata = test, allow.new.levels = TRUE)
+  rmse_test[n] = Metrics::rmse(newpred, test$CHI_MLU)
+  rmse_train[n] = Metrics::rmse(train$CHI_MLU, fitted(newmodel))
+  
+  n = n+1
+}
+
+mean(rmse_test)
+mean(rmse_train)
+
+```
+
+
 - Report the results and comment on them.
+The model is a lot better at explaining the data than predicting the new data.
 
 - Now try to find the best possible predictive model of ChildMLU, that is, the one that produces the best cross-validated results.
 
@@ -62,6 +204,35 @@ You want to evaluate:
 (Tip: recreate the equation of the model: Y=Intercept+BetaX1+BetaX2, etc; input the average of the TD group  for each parameter in the model as X1, X2, etc.).
 
 - how does the child fare compared to the model predictions at Visit 6? Is the child below or above expectations? (tip: use the predict() function on Bernie's data only and compare the prediction with the actual performance of the child)
+
+__
+
+exclude the ASD children.
+
+How does the average TD child perfrom.
+Want six datapoints (one for each visit)
+
+Does he fit in the predictive intervals?
+
+Can look at summary of the model.
+MLU = intercept estimate + 1*visit + 1*diagnosis + 1*verbalIQ
+
+Extract Bernie (number 2) from test data set:
+```{r}
+Bernie = subset(df6, df6$SUBJ1 == 2)
+```
+
+Extract the TD children from the data set:
+```{r}
+TDchildren = subset(data, data$Diagnosis == "TD")
+```
+
+
+```{r}
+basicmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = data)
+summary(basicmodel)
+```
+
 
 [HERE GOES YOUR ANSWER]
 
