@@ -54,7 +54,7 @@ model = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|
 - calculate performance of the model on the training data: root mean square error is a good measure. (Tip: google the functions rmse() and predict() )
     *RMSE(model, data) dont use predict*
 ```{r}
-Metrics::rmse(model, data)
+modelr::rmse(model, data)
 ```
 
 - create the test dataset (apply the code from assignment 1 part 1 to clean up the 3 test datasets)
@@ -126,18 +126,13 @@ df6$Diagnosis = plyr::revalue(df6$Diagnosis, c("A" = "ASD", "B" = "TD"))
 
 ```
 
-save the data as a csv-file (probably not necessary):
-```{r}
-write.csv(df6, file = "ass1_LangASDtest.csv")
-```
-
 - test the performance of the models on the test data 
 ```{r}
 testmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|SUBJ1), data = df6)
 ```
 
 ```{r}
-rmse(testmodel, df6)
+modelr::rmse(testmodel, df6)
 ```
 
 - optional: predictions are never certain, can you identify the uncertainty of the predictions? (e.g. google predictinterval())
@@ -184,11 +179,44 @@ mean(rmse_train)
 
 
 - Report the results and comment on them.
-The model is a lot better at explaining the data than predicting the new data.
+The rmse of the test data is 0.809, while the rmse of the train data is 0.341, which tells us that the model is better at explaining the data than predicting the new data. 
 
 - Now try to find the best possible predictive model of ChildMLU, that is, the one that produces the best cross-validated results.
+```{r}
+goodmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|SUBJ1), data = data)
+```
+
+```{r}
+folds = createFolds(unique(data$SUBJ1), k = 5)
+rmse_train = NULL
+rmse_test = NULL
+n = 1
+
+for(i in folds){
+  train = subset(data, !(data$SUBJ1 %in% i))
+  test = subset(data, data$SUBJ1 %in%i)
+
+  newmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ + (1+VISIT|SUBJ1), data = train)
+  
+  newpred = predict(newmodel, newdata = test, allow.new.levels = TRUE)
+  rmse_test[n] = Metrics::rmse(newpred, test$CHI_MLU)
+  rmse_train[n] = Metrics::rmse(train$CHI_MLU, fitted(newmodel))
+  
+  n = n+1
+}
+
+mean(rmse_test)
+mean(rmse_train)
+
+```
+This model is better at predicting new data than the basic model, as it has a lower rmse for the test data.
 
 - Bonus Question 1: How would you go comparing the performance of the basic model and the cross-validated model on the testing set?
+Use rmse?
+```{r}
+modelr::rmse(basicmodel, data)
+```
+
 - Bonus Question 2: What is the effect of changing the number of folds? Can you plot RMSE as a function of number of folds?
 - Bonus Question 3: compare the cross-validated predictive error against the actual predictive error on the test data
 
@@ -201,7 +229,7 @@ Bernie is one of the six kids in the test dataset, so make sure to extract that 
 You want to evaluate:
 
 - how does the child fare in ChildMLU compared to the average TD child at each visit? Define the distance in terms of absolute difference between this Child and the average TD.
-(Tip: recreate the equation of the model: Y=Intercept+BetaX1+BetaX2, etc; input the average of the TD group  for each parameter in the model as X1, X2, etc.).
+(Tip: recreate the equation of the model: Y=Intercept+BetaX1+BetaX2, etc; input the average of the TD group for each parameter in the model as X1, X2, etc.).
 
 - how does the child fare compared to the model predictions at Visit 6? Is the child below or above expectations? (tip: use the predict() function on Bernie's data only and compare the prediction with the actual performance of the child)
 
@@ -227,12 +255,81 @@ Extract the TD children from the data set:
 TDchildren = subset(data, data$Diagnosis == "TD")
 ```
 
-
+Find the mean verbalIQ:
 ```{r}
-basicmodel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + (1+VISIT|SUBJ1), data = data)
-summary(basicmodel)
+mean(TDchildren$verbalIQ)
 ```
 
+Find the mean of types_CHI for each visit:
+```{r}
+mean(TDchildren$types_CHI[TDchildren$VISIT == "1"])
+mean(TDchildren$types_CHI[TDchildren$VISIT == "2"])
+mean(TDchildren$types_CHI[TDchildren$VISIT == "3"])
+mean(TDchildren$types_CHI[TDchildren$VISIT == "4"])
+mean(TDchildren$types_CHI[TDchildren$VISIT == "5"])
+mean(TDchildren$types_CHI[TDchildren$VISIT == "6"])
+```
+
+
+```{r}
+model1 = lmer(CHI_MLU ~ 1 + VISIT + types_CHI + verbalIQ + (1+VISIT|SUBJ1), data = TDchildren)
+summary(model1)
+```
+
+```{r}
+MLU = 0.491 + (0.154*VISIT) + (0.007*types_CHI) + (0.018+verbalIQ)
+
+#For visit 1, 2, etc:
+MLU1 = 0.491 + (0.154*1) + (0.007*44.75)  + (0.018*20.151)
+MLU2 = 0.491 + (0.154*2) + (0.007*94.281) + (0.018*20.151)
+MLU3 = 0.491 + (0.154*3) + (0.007*133) + (0.018*20.151)
+MLU4 = 0.491 + (0.154*4) + (0.007*161.063) + (0.018*20.151)
+MLU5 = 0.491 + (0.154*5) + (0.007*175.355) + (0.018*20.151)
+MLU6 = 0.491 + (0.154*6) + (0.007*174.607) + (0.018*20.151)
+
+MLU1
+MLU2
+MLU3
+MLU4
+MLU5
+MLU6
+
+```
+
+```{r}
+BMLU1 = Bernie$CHI_MLU[Bernie$VISIT == "1"]
+BMLU2 = Bernie$CHI_MLU[Bernie$VISIT == "2"]
+BMLU3 = Bernie$CHI_MLU[Bernie$VISIT == "3"]
+BMLU4 = Bernie$CHI_MLU[Bernie$VISIT == "4"]
+BMLU5 = Bernie$CHI_MLU[Bernie$VISIT == "5"]
+BMLU6 = Bernie$CHI_MLU[Bernie$VISIT == "6"]
+
+BMLU1
+BMLU2
+BMLU3
+BMLU4
+BMLU5
+BMLU6
+
+```
+
+Distance between Bernie's MLU and average TDs:
+```{r}
+MLU1-BMLU1
+MLU2-BMLU2
+MLU3-BMLU3
+MLU4-BMLU4
+MLU5-BMLU5
+MLU6-BMLU6
+```
+Bernie's MLU is higher than the average TD child's MLU for all visits.
+
+Plot:
+```{r}
+mlu_TD = ggplot(data = TD_meanMLU_est, aes(x = VISIT, y = MLU_est)) + geom_bar(stat = "identity", width = 1, fill = "grey")
+mlu_TD_andBernie = mlu_TD + geom_line(data = Bernie, aes(x = as.numeric(VISIT), y = CHI_MLU), colour = "red")
+mlu_TD_andBernie
+```
 
 [HERE GOES YOUR ANSWER]
 
