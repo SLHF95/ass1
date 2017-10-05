@@ -325,6 +325,31 @@ r.squaredGLMM(m3)
 m4 = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|SUBJ1), data = data)
 summary(m4)
 r.squaredGLMM(m4)
+
+
 ```
 
 REPORT OF THE RESULTS
+
+*average error: how wrong we expect the model to be on average*
+
+What is a good model for training?
+the more complex the model, the better it is to explain the data (mostly).
+conceptually - Think about - do we actually learn something from predicting mlu from unique words? it doesn't really add something new
+
+
+What is a good model for testing?
+the simpler the better.
+replication crisis: it is hard to know what explaining models are good at predicting.
+
+
+shared variance + residuals of both variables. the residuals explain what is on top of the shared variance for each variable. 
+
+
+cross-validation:
+folding the data (pie). train the model on 3/4 of the pie, test it on the 1/4 of the pie, then repeat the process for each quarter of the pie.
+how many depends on:
+how much data you have - the omre the bigger the number of slices
+leave-one-out - issue with your assumption about representation of the population in your data
+the more folds, the longer it takes to run
+tip: we're looking at kids, not datapoints.
