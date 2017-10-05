@@ -1,6 +1,6 @@
 ---
 title: "Assignment 1 - Language Development in ASD - part 3"
-author: "Riccardo Fusaroli"
+author: "Sofie Frandsen, Kristian Isen"
 date: "August 10, 2017"
 output: html_document
 ---
@@ -23,7 +23,7 @@ N.B. There are several datasets for this exercise, so pay attention to which one
 
 ```{r Load Libraries}
 library(pacman)
-p_load(lmerTest, modelr, stringr, tidyverse, caret, cvTools, Metrics)
+p_load(lmerTest, modelr, stringr, tidyverse, caret, cvTools, Metrics, ggplot2)
 ```
 
 ### Define your working directory and load the data
@@ -45,6 +45,13 @@ data = read.csv("ass1_LangASD.csv")
 ### Exercise 1) Testing model performance
 
 How did your models from last time perform? In this exercise you have to compare the results on the training data () and on the test data. Report both of them. Compare them. Discuss why they are different.
+
+[HERE GOES YOUR ANSWER]
+
+*How did your models from last time perform? In this exercise you have to compare the results on the training data () and on the test data. Report both of them. Compare them. Discuss why they are different.*
+
+RMSE of the training data is 0.306, while the RMSE of test data is 0.284. RMSE of the training is higher than RMSE of the test data, which means that the model is better at predicting new data than it is at explaining the data.   
+
 
 - recreate the models you chose last time (just write the code again and apply it to Assignment2TrainData1.csv)
 ```{r}
@@ -137,13 +144,19 @@ modelr::rmse(testmodel, df6)
 
 - optional: predictions are never certain, can you identify the uncertainty of the predictions? (e.g. google predictinterval())
 
-[HERE GOES YOUR ANSWER]
+
 
 ### Exercise 2) Model Selection via Cross-validation (N.B: ChildMLU!)
 
 One way to reduce bad surprises when testing a model on new data is to train the model via cross-validation. 
 
 In this exercise you have to use cross-validation to calculate the predictive error of your models and use this predictive error to select the best possible model.
+
+[HERE GOES YOUR ANSWER]
+
+For the cross-validated basic model, the RMSE of the test data is 0.809, while the RMSE of the train data is 0.341, which tells us that the model is better at explaining the data than predicting the new data. 
+
+For the cross-validated improved model, the RMSE of the test data is 0.477, while the RMSE of the train data is 0.309, which tells us that the model is better at explaining the data than predicting the new data, but that the improved model is better at predicting the new data than the basic model. 
 
 - Create the basic model of ChildMLU as a function of Time and Diagnosis (don't forget the random effects!).
 
@@ -178,7 +191,8 @@ mean(rmse_train)
 ```
 
 
-- Report the results and comment on them.
+- Report the results and comment on them. 
+
 The rmse of the test data is 0.809, while the rmse of the train data is 0.341, which tells us that the model is better at explaining the data than predicting the new data. 
 
 - Now try to find the best possible predictive model of ChildMLU, that is, the one that produces the best cross-validated results.
@@ -211,10 +225,12 @@ mean(rmse_train)
 ```
 This model is better at predicting new data than the basic model, as it has a lower rmse for the test data.
 
-- Bonus Question 1: How would you go comparing the performance of the basic model and the cross-validated model on the testing set?
+- Bonus Question 1: How would you go comparing the performance of the basic model and the cross-validated model on the testing set? 
+
 Use rmse?
 ```{r}
 modelr::rmse(basicmodel, data)
+modelr::rmse(goodmodel, data)
 ```
 
 - Bonus Question 2: What is the effect of changing the number of folds? Can you plot RMSE as a function of number of folds?
@@ -229,12 +245,21 @@ Bernie is one of the six kids in the test dataset, so make sure to extract that 
 You want to evaluate:
 
 - how does the child fare in ChildMLU compared to the average TD child at each visit? Define the distance in terms of absolute difference between this Child and the average TD.
-(Tip: recreate the equation of the model: Y=Intercept+BetaX1+BetaX2, etc; input the average of the TD group for each parameter in the model as X1, X2, etc.).
+(Tip: recreate the equation of the model: Y=Intercept+BetaX1+BetaX2, etc; input the average of the TD group for each parameter in the model as X1, X2, etc.). 
 
-- how does the child fare compared to the model predictions at Visit 6? Is the child below or above expectations? (tip: use the predict() function on Bernie's data only and compare the prediction with the actual performance of the child)
+[HERE GOES YOUR ANSWER]
+
+*How does the child fare in ChildMLU compared to the average TD child at each visit? Define the distance in terms of absolute difference between this Child and the average TD.*
+
+Bernie's MLU is higher than the average TD child's MLU for all visits.
+
+*How does the child fare compared to the model predictions at Visit 6? Is the child below or above expectations?*
+
+Bernie's actual MLU at visit 6 is 3.45, while his predicted MLU at visit 6 is 3.39, so Bernie is a little above expectations at visit 6.
 
 __
 
+So: 
 exclude the ASD children.
 
 How does the average TD child perfrom.
@@ -277,7 +302,7 @@ summary(model1)
 ```
 
 ```{r}
-MLU = 0.491 + (0.154*VISIT) + (0.007*types_CHI) + (0.018+verbalIQ)
+#MLU = 0.491 + (0.154*VISIT) + (0.007*types_CHI) + (0.018+verbalIQ)
 
 #For visit 1, 2, etc:
 MLU1 = 0.491 + (0.154*1) + (0.007*44.75)  + (0.018*20.151)
@@ -326,12 +351,24 @@ Bernie's MLU is higher than the average TD child's MLU for all visits.
 
 Plot:
 ```{r}
-mlu_TD = ggplot(data = TD_meanMLU_est, aes(x = VISIT, y = MLU_est)) + geom_bar(stat = "identity", width = 1, fill = "grey")
-mlu_TD_andBernie = mlu_TD + geom_line(data = Bernie, aes(x = as.numeric(VISIT), y = CHI_MLU), colour = "red")
+TD_meanMLU_est = data.frame("VISIT" = c(1, 2, 3, 4, 5, 6), "MLU_est" = c(1.32, 1.82, 2.25, 2.6, 2.85, 3))
+
+
+mlu_TD = ggplot(data = TD_meanMLU_est, aes(x = VISIT, y = MLU_est)) + geom_bar(stat = "identity", width = 0.15, fill = "grey", colour = "black")
+mlu_TD_andBernie = mlu_TD + geom_line(data = Bernie, aes(x = as.numeric(VISIT), y = CHI_MLU), colour = "red") + theme_minimal()
 mlu_TD_andBernie
 ```
 
-[HERE GOES YOUR ANSWER]
+- how does the child fare compared to the model predictions at Visit 6? Is the child below or above expectations? (tip: use the predict() function on Bernie's data only and compare the prediction with the actual performance of the child)
+
+```{r}
+predBMLU = predict(model1, Bernie, allow.new.levels = TRUE)
+Bernie$CHI_MLU[6]
+predBMLU[6]
+```
+
+Bernie's actual MLU at visit 6 is 3.45, while his predicted MLU at visit 6 is 3.39, so Bernie is a little above expectations at visit 6.
+
 
 ### OPTIONAL: Exercise 4) Model Selection via Information Criteria
 Another way to reduce the bad surprises when testing a model on new data is to pay close attention to the relative information criteria between the models you are comparing. Let's learn how to do that!
