@@ -19,7 +19,7 @@ How much power does your study have (if your model estimates are quite right)?
 - [GitHub]Load your dataset 
 ```{r Load Libraries}
 library(pacman)
-p_load(lmerTest, modelr, simr)
+p_load(lmerTest, modelr, simr, MASS)
 ```
 
 Define working directory and load the data
@@ -72,26 +72,33 @@ report the power analysis and comment on what you can (or cannot) use its estima
 
 How would you perform a more conservative power analysis?
 - Identify and justify a minimum effect size for each of your relevant effects
+- [GitHub] take the model from exercise 1 and replace the effects with the minimum effect size that you'd accept.
+- [GitHub] assess the power curve by Child.ID, identifying an ideal number of participants to estimate each effect
 ```{r}
 summary(mluModel)
 fixef(mluModel)["VISIT"] <- 0.1
-fixef(mluModel)["DiagnosisTD"] <- 0.07
-fixef(mluModel)["types_CHI"] <- 0.008
-fixef(mluModel)["verbalIQ"] <- 0.002
+fixef(mluModel)["DiagnosisTD"] <- 0.007
+fixef(mluModel)["types_CHI"] <- 0.01
+fixef(mluModel)["verbalIQ"] <- 0.03
 
 powerCurveV = powerCurve(mluModel, fixed("VISIT"), along = "SUBJ1", nsim = 10)
 
 powerCurveD = powerCurve(mluModel, fixed("DiagnosisTD"), along = "SUBJ1", nsim = 10)
 
+powerCurveT = powerCurve(mluModel, fixed("types_CHI"), along = "SUBJ1", nsim = 10)
+
+powerCurveVIQ = powerCurve(mluModel, fixed("verbalIQ"), along = "SUBJ1", nsim = 10)
+
 plot(powerCurveV)
 plot(powerCurveD)
+plot(powerCurveT)
+plot(powerCurveVIQ)
 
 ```
 x antal participants for a statistical power of 80
 
 
-- [GitHub] take the model from exercise 1 and replace the effects with the minimum effect size that you'd accept.
-- [GitHub] assess the power curve by Child.ID, identifying an ideal number of participants to estimate each effect
+
 - OPTIONAL if your power estimates do not reach an acceptable threshold simulate additional participants and repeat the previous analysis
 - Report the power analysis and comment on what you can (or cannot) use its estimates for.
 
@@ -101,7 +108,7 @@ x antal participants for a statistical power of 80
 ### Riccardo's clumsy function to simulate new participants
 ### TO DO points are only notes for myself, so not part of the assignment
 
-createNewData <- function (participants,visits,model){
+createNewData <- function (participants, visits, model){
   # participants is the number of subjects
   # visits is the number of visits
   # TO DO: LOOP THROUGH ALL FE ROWS AND AUTOMATICALLY EXTRACT NAMES OF FIXED EFFECTS AND ESTIMATES
@@ -120,10 +127,10 @@ createNewData <- function (participants,visits,model){
   sigmaCorrelation <- as.numeric(attr(vc[[1]],"correlation")[2])
   
   # Create an empty dataframe
-  d=expand.grid(Visit=1:visits,Child.ID=1:participants)
+  d=expand.grid(VISIT=1:visits,SUBJ1=1:participants)
   # Randomly sample from a binomial (to generate the diagnosis)
   condition <- sample(rep(0:1, participants/2))
-  d$Diagnosis<-condition[d$Child.ID]
+  d$Diagnosis<-condition[d$SUBJ1]
   d$Diagnosis[is.na(d$Diagnosis)]<-1
   
   ## Define variance covariance matrices:
@@ -134,7 +141,7 @@ createNewData <- function (participants,visits,model){
   
   ## generate new fake participants (column1=RandomIntercept, column2=RandomSlope)
   u<-mvrnorm(n=participants,
-             mu=c(0,0),Sigma=cov(ranef(model)$Child.ID))
+             mu=c(0,0),Sigma=cov(ranef(model)$SUBJ1))
   
   ## now generate fake data:
   ### the outcome is extracted from a gaussian with
@@ -142,11 +149,13 @@ createNewData <- function (participants,visits,model){
   ### the residual standard deviation as standard deviation 
   d$CHI_MLU <- rnorm(participants*visits,
                      (Intercept+u[,1]) +
-                     (bVisit+u[,2])*d$Visit + 
+                     (bVisit+u[,2])*d$VISIT + 
                      bDiagnosis*d$Diagnosis ,sigmaResiduals)  
   
   return(d)
 }
+
+data1=createNewData(20, 6, mluModel)
 ```
 
 
