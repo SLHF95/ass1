@@ -1,6 +1,6 @@
 ---
 title: "A1_P1_Student"
-author: "Sofie L. H. Frandsen"
+author: "Sofie L. H. Frandsen, Kristian Isen, Astrid Lang Ledager"
 date: "29/8/2017"
 output: html_document
 ---
@@ -38,7 +38,7 @@ N.B. Create a GitHub repository for the Language Development in ASD set of assig
 Set the working directory (the directory with your data and code for these assignments):
 
 ```{r}
-setwd("C:/Users/Bruger/Dropbox/0Aarhus Universitet/Experimental Methods III/Assignment 1/ass1")
+setwd("C:/Users/slhf9/Dropbox/0Aarhus Universitet/Experimental Methods III/Assignment 1/ass1")
 ```
 
 Load the three data sets, after downloading them from dropbox and saving them in your working directory:
@@ -66,7 +66,6 @@ Tip: Look into the package data.table, or google "how to rename variables in R"
 
 
 ```{r}
-library(plyr)
 data1 = plyr::rename(data1, c("Child.ID" = "SUBJ", "Visit" = "VISIT"))
 ```
 
@@ -168,7 +167,6 @@ Now, we are almost ready to actually start working with the data. However, here 
 Tip: as.numeric() might be a useful function, but not alone.
 
 ```{r}
-#dfAll$SUBJ1 = as.numeric(as.factor(dfAll$SUBJ1))
 str(dfAll)
 dfAll$SUBJ1 = as.factor(dfAll$SUBJ1)
 levels(dfAll$SUBJ1) = 1:length(levels(dfAll$SUBJ1))
@@ -188,9 +186,9 @@ Tip: Google "how to rename levels in R".
 ```{r}
 
 dfAll$Gender = as.factor(dfAll$Gender)
-dfAll$Gender = revalue(dfAll$Gender, c("1" = "F", "2" = "M"))
+dfAll$Gender = plyr::revalue(dfAll$Gender, c("1" = "M", "2" = "F"))
 
-dfAll$Diagnosis = revalue(dfAll$Diagnosis, c("A" = "ASD", "B" = "TD"))
+dfAll$Diagnosis = plyr::revalue(dfAll$Diagnosis, c("A" = "ASD", "B" = "TD"))
 
 ```
 

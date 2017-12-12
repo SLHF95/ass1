@@ -1,6 +1,6 @@
 ---
 title: "Assignment 1 - Language Development in ASD - part 4"
-author: "Riccardo Fusaroli"
+author: "Sofie L. H. Frandsen, Kristian Isen, Astrid Lang Ledager"
 date: "August 10, 2017"
 output: html_document
 ---
@@ -20,6 +20,7 @@ How much power does your study have (if your model estimates are quite right)?
 ```{r Load Libraries}
 library(pacman)
 p_load(lmerTest, modelr, simr, MASS)
+
 ```
 
 Define working directory and load the data
@@ -45,25 +46,29 @@ model = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ +  (1+VISIT|
 
 Assess power for your main effects and interactions of interest.
 ```{r}
-mluModel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ + (1+VISIT|SUBJ1), data = data)
-powerV = powerSim(mluModel, fixed("VISIT"), nsim = 10)
+mluModel = lmer(CHI_MLU ~ 1 + VISIT + Diagnosis + types_CHI + verbalIQ + (1+VISIT|SUBJ1), data = data, REML = F)
+powerV = powerSim(mluModel, fixed("VISIT"), nsim = 20)
 
-powerD = powerSim(mluModel, fixed("Diagnosis"), nsim = 10)
+powerD = powerSim(mluModel, fixed("Diagnosis"), nsim = 20)
 
-powerT = powerSim(mluModel, fixed("types_CHI"), nsim = 10)
+powerT = powerSim(mluModel, fixed("types_CHI"), nsim = 20)
 
-powervIQ = powerSim(mluModel, fixed("verbalIQ"), nsim = 10)
+powervIQ = powerSim(mluModel, fixed("verbalIQ"), nsim = 20)
 
-powerV
+powerV #0.076
+
 powerD
-powerT
-powervIQ
+summary(mluModel)
+
+powerT #0.0081
+
+powervIQ #0.02
 
 
 ```
- the smaller the effect size, the more participants you need to get power
+ *the smaller the effect size, the more participants you need to get power*
  
-the fewer simulations, the larger the confidence intervals
+*the fewer simulations, the larger the confidence intervals*
 
 
 report the power analysis and comment on what you can (or cannot) use its estimates for.
@@ -76,92 +81,44 @@ How would you perform a more conservative power analysis?
 - [GitHub] assess the power curve by Child.ID, identifying an ideal number of participants to estimate each effect
 ```{r}
 summary(mluModel)
-fixef(mluModel)["VISIT"] <- 0.1
-fixef(mluModel)["DiagnosisTD"] <- 0.007
-fixef(mluModel)["types_CHI"] <- 0.01
-fixef(mluModel)["verbalIQ"] <- 0.03
+#estimate minus half standard error
+0.1 - 0.01
+fixef(mluModel)["VISIT"] <- 0.09
 
-powerCurveV = powerCurve(mluModel, fixed("VISIT"), along = "SUBJ1", nsim = 10)
+0.068 - 0.036
+fixef(mluModel)["Diagnosis"] <- 0.032
 
-powerCurveD = powerCurve(mluModel, fixed("DiagnosisTD"), along = "SUBJ1", nsim = 10)
+0.008 - 0.0003
+fixef(mluModel)["types_CHI"] <- 0.008
 
-powerCurveT = powerCurve(mluModel, fixed("types_CHI"), along = "SUBJ1", nsim = 10)
+0.02 - 0.003
+fixef(mluModel)["verbalIQ"] <- 0.017
 
-powerCurveVIQ = powerCurve(mluModel, fixed("verbalIQ"), along = "SUBJ1", nsim = 10)
+powerCurveV = powerCurve(mluModel, fixed("VISIT"), along = "SUBJ1", nsim = 20)
+
+powerCurveD = powerCurve(mluModel, fixed("Diagnosis"), along = "SUBJ1", nsim = 20)
+
+powerCurveT = powerCurve(mluModel, fixed("types_CHI"), along = "SUBJ1", nsim = 20)
+
+powerCurveVIQ = powerCurve(mluModel, fixed("verbalIQ"), along = "SUBJ1", nsim = 20)
 
 plot(powerCurveV)
 plot(powerCurveD)
 plot(powerCurveT)
 plot(powerCurveVIQ)
 
+
 ```
 x antal participants for a statistical power of 80
 
-
-
-- OPTIONAL if your power estimates do not reach an acceptable threshold simulate additional participants and repeat the previous analysis
 - Report the power analysis and comment on what you can (or cannot) use its estimates for.
 
-```{r}
-
-
-### Riccardo's clumsy function to simulate new participants
-### TO DO points are only notes for myself, so not part of the assignment
-
-createNewData <- function (participants, visits, model){
-  # participants is the number of subjects
-  # visits is the number of visits
-  # TO DO: LOOP THROUGH ALL FE ROWS AND AUTOMATICALLY EXTRACT NAMES OF FIXED EFFECTS AND ESTIMATES
-  fe <- fixef(model)
-  Intercept <- fe[1] #intercept
-  bVisit <- fe[2] #visit
-  bDiagnosis <- fe[3] #diagnosis
-  bVisitDiagnosis <- fe[4] #visit diagnosis interaction
-  # TO DO: INTEGRATE STANDARD ERROR?
-  
-  # TO DO: LOOP THROUGH ALL VC COMPONENTS AND AUTOMATICALLY EXTRACT NAMES OF EFFECTS AND ESTIMATES
-  vc<-VarCorr(model) # variance component
-  sigmaSubject <- as.numeric(attr(vc[[1]],"stddev")[1]) # random intercept by subject
-  sigmaVisit <- as.numeric(attr(vc[[1]],"stddev")[2]) # random slope of visit over subject
-  sigmaResiduals <- as.numeric(attr(vc,"sc"))
-  sigmaCorrelation <- as.numeric(attr(vc[[1]],"correlation")[2])
-  
-  # Create an empty dataframe
-  d=expand.grid(VISIT=1:visits,SUBJ1=1:participants)
-  # Randomly sample from a binomial (to generate the diagnosis)
-  condition <- sample(rep(0:1, participants/2))
-  d$Diagnosis<-condition[d$SUBJ1]
-  d$Diagnosis[is.na(d$Diagnosis)]<-1
-  
-  ## Define variance covariance matrices:
-  Sigma.u<-matrix(c(sigmaSubject^2,
-                    sigmaCorrelation*sigmaSubject*sigmaVisit,
-                    sigmaCorrelation*sigmaSubject*sigmaVisit,
-                    sigmaVisit^2),nrow=2)
-  
-  ## generate new fake participants (column1=RandomIntercept, column2=RandomSlope)
-  u<-mvrnorm(n=participants,
-             mu=c(0,0),Sigma=cov(ranef(model)$SUBJ1))
-  
-  ## now generate fake data:
-  ### the outcome is extracted from a gaussian with
-  ### the solution to the model's equation as mean and
-  ### the residual standard deviation as standard deviation 
-  d$CHI_MLU <- rnorm(participants*visits,
-                     (Intercept+u[,1]) +
-                     (bVisit+u[,2])*d$VISIT + 
-                     bDiagnosis*d$Diagnosis ,sigmaResiduals)  
-  
-  return(d)
-}
-
-data1=createNewData(20, 6, mluModel)
-```
 
 
 ### Exercise 3
 
 Assume you have only the resources to collect 30 kids (15 with ASD and 15 TDs). Identify the power for each relevant effect and discuss whether it's worth to run the study and why.
+ 
 
 
 
